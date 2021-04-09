@@ -1,0 +1,7 @@
+#Hologic private TOMO tags
+#See DICOM (CP-1280) PS3.15
+(7E01,"HOLOGIC, Inc.",01)	LO	CodecVersion	1	HologicTomoSc
+(7E01,"HOLOGIC, Inc.",02)	SH	CodecContentType	1	HologicTomoSc
+(7E01,"HOLOGIC, Inc.",10)	SQ	HighResolutionDataSequence	1	HologicTomoSc
+(7E01,"HOLOGIC, Inc.",11)	SQ	LowResolutionDataSequence	1	HologicTomoSc
+(7E01,"HOLOGIC, Inc.",12)	OB	CodecContent	1	HologicTomoSc
