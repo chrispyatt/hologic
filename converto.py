@@ -45,6 +45,8 @@ print('getting info')
 with open(pvt_dump, "rb") as fh:
     data = fh.read()
 
+print(type(data))
+
 print('frame count')
 print(data[20])
 print(data[21])
