@@ -42,4 +42,10 @@ cat x*.bin > data.bin
 rm x*.bin
 
 
+echo ---------------------------------------------
+echo ------- Getting sanity check figures --------
+echo ---------------------------------------------
+dcmdump -M $infile | grep 0028,001 > sanity.txt
+dcmdump -M $infile | grep 0028,0101 >> sanity.txt
+
 

@@ -46,9 +46,11 @@ with open(pvt_dump, "rb") as fh:
     data = fh.read()
 
 print(type(data))
+h = hex(int(data))
+print(type(h))
 
 print('frame count')
-print(data[20])
+print(data[20],data[21])
 print(data[21])
 
 print('columns')
