@@ -45,24 +45,30 @@ print('getting info')
 with open(pvt_dump, "rb") as fh:
     data = fh.read()
 
-print(type(data))
-h = hex(int(data))
-print(type(h))
+#print('frame count')
+fcount = int(str(hex(data[21])).split('x')[1] + str(hex(data[20])).split('x')[1])
+ds2[0x0028,0x0008] = pydicom.DataElement((0x0028,0x0008), 'US', fcount)
 
-print('frame count')
-print(data[20],data[21])
-print(data[21])
+#print('columns')
+cols = int(str(hex(data[25])).split('x')[1] + str(hex(data[24])).split('x')[1])
+ds2[0x0028,0x0011] = pydicom.DataElement((0x0028,0x0011), 'US', cols)
 
-print('columns')
-print(data[24])
-print(data[25])
 
-print('rows')
-print(data[28])
-print(data[29])
+#print('rows')
+rows = int(str(hex(data[29])).split('x')[1] + str(hex(data[28])).split('x')[1])
+ds2[0x0028,0x0010] = pydicom.DataElement((0x0028,0x0010), 'US', rows)
 
-print('bits stored')
-print(data[32])
+
+#print('bits stored')
+bits = int(str(hex(data[32])).split('x')[1])
+ds2[0x0028,0x0101] = pydicom.DataElement((0x0028,0x0101), 'US', bits)
+ds2[0x0028,0x0102] = pydicom.DataElement((0x0028,0x0102), 'US', bits-1)
+
+
+#misc values
+ds2[0x0028,0x0100] = pydicom.DataElement((0x0028,0x0100), 'US', '16')
+ds2[0x0028,0x0004] = pydicom.DataElement((0x0028,0x0004), 'CS', 'MONOCHROME2')
+
 
 # make jpeg-ls header
 
