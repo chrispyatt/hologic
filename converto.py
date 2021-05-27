@@ -72,6 +72,24 @@ ds2[0x0028,0x0004] = pydicom.DataElement((0x0028,0x0004), 'CS', 'MONOCHROME2')
 
 # make jpeg-ls header
 
+0xFF, 0xD8 Start of image marker
+0xFF, 0xF7, // Start of JPEG-LS frame (SOF55) marker – marker segment follows
+0x00, 0x0B, // Length of marker segment = 11 bytes including the length field
+0x08, // P = Precision [Set from data[32] ]
+0x00, 0x00, // Y = Number of lines [Set from data[28-29] - reversed to make big endian]
+0x00, 0x00, // X = Number of columns [Set from data[24-25] - reversed to make big endian]
+0x01, // Nf = Number of components in the frame = 1
+0x01, // C1 = Component ID = 1 (first and only component)
+0x11, // Sub-sampling: H1 = 1, V1 = 1
+0x00, // Tq1 = 0 (this field is always 0)
+0xFF, 0xDA, // Start of scan (SOS) marker
+0x00, 0x08, // Length of marker segment = 8 bytes including the length field
+0x01, // Ns = Number of components for this scan = 1
+0x01, // Ci = Component ID = 1
+0x00, // Tm1 = Mapping table index = 0 (no mapping table)
+0x00, // NEAR [Set from data[36] ] -
+0x00, // ILV = 0 (interleave mode = non-interleaved)
+0x00 // Al = 0, Ah = 0 (no point transform)
 
 # get frame positions from high res sequence
 frames = []
