@@ -85,7 +85,8 @@ print(type(data))
 
 for i in range(-1024,0,4):
     #print(data[i],data[i+1],data[i+2],data[i+3])
-    frame_pos = int.from_bytes(data[i:i+3],"little")
+    frame_pos = int.from_bytes(data[i:i+4],"little")
+    print(data[i:i+4])
     frames.append(frame_pos)
 
 
@@ -94,24 +95,27 @@ for i in range(-1024,0,4):
 
 
 # first need to correct for the int overflow issue (can't see proper solution)
-corrected_frames = []
+#corrected_frames = []
 prev = 0
-correction = 0
-for i in range(0,fcount+1):
-    frame = frames[i]
-    diff = frames[i]-prev
-    if diff<0:
-        diff=diff+((2**23)*2)
-        correction = correction + 1
-    corrected_frame = frame+((2**23)*2*correction)
-    print(corrected_frame, "  -----  ", diff)
-    prev = frames[i]
+#correction = 0
+#for i in range(0,fcount+1):
+#    frame = frames[i]
+#    diff = frames[i]-prev
+#    if diff<0:
+#        diff=diff+((2**23)*2)
+#        correction = correction + 1
+#    corrected_frame = frame+((2**23)*2*correction)
+#    print(corrected_frame, "  -----  ", diff)
+#    prev = frames[i]
     
 # Pixel Data tag is 7FE0,0010
 pixel_data = []
 
 # save pixel data via array
 for i in range(0,fcount+1):
+    diff = frames[i] - prev
+    print(frames[i], "  -----  ", diff)
+    prev = frames[i]
     frame_start = frames[i]
     frame_end = frames[i+1]-1
     frame_pixels = []
