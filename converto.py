@@ -11,11 +11,14 @@ parser.add_argument('infile',
                     help='The Hologic image file to be processed.')
 parser.add_argument('pvt_dump',
                     help='The private data dump.')
+parser.add_argument('outfile',
+                    help='Desired output filename.')
 
 
 args = parser.parse_args()
 infile = args.infile
 pvt_dump = args.pvt_dump
+outfile = args.outfile
 #outputDirectory = args.outputDirectory
 
 
@@ -44,26 +47,26 @@ print('getting non-private elements')
 
 
 # set frame count, columns etc in new dicom file (take from igh res sequence)
-print('getting info')
+print('getting private info')
 with open(pvt_dump, "rb") as fh:
     data = fh.read()
 
 #print('frame count')
-fcount = int(str(hex(data[21])).split('x')[1] + str(hex(data[20])).split('x')[1],16)
+fcount = int.from_bytes(data[20:22],"little")
 ds2[0x0028,0x0008] = pydicom.DataElement((0x0028,0x0008), 'US', fcount)
 
 #print('columns')
-cols = int(str(hex(data[25])).split('x')[1] + str(hex(data[24])).split('x')[1],16)
+cols = int.from_bytes(data[24:26],"little")
 ds2[0x0028,0x0011] = pydicom.DataElement((0x0028,0x0011), 'US', cols)
 
 
 #print('rows')
-rows = int(str(hex(data[29])).split('x')[1] + str(hex(data[28])).split('x')[1],16)
+rows = int.from_bytes(data[28:30],"little")
 ds2[0x0028,0x0010] = pydicom.DataElement((0x0028,0x0010), 'US', rows)
 
 
 #print('bits stored')
-bits = int(str(hex(data[32])).split('x')[1],16)
+bits = int.from_bytes(data[32:33],"little")
 ds2[0x0028,0x0101] = pydicom.DataElement((0x0028,0x0101), 'US', bits)
 ds2[0x0028,0x0102] = pydicom.DataElement((0x0028,0x0102), 'US', bits-1)
 
@@ -71,70 +74,63 @@ ds2[0x0028,0x0102] = pydicom.DataElement((0x0028,0x0102), 'US', bits-1)
 #misc values
 ds2[0x0028,0x0100] = pydicom.DataElement((0x0028,0x0100), 'US', '16')
 ds2[0x0028,0x0004] = pydicom.DataElement((0x0028,0x0004), 'CS', 'MONOCHROME2')
-ds2[0x0002] = pydicom.DataElement((0x0002), 'UN', '1.2.840.10008.1.2.4.81')
+ds2[0x0002,0x0010] = pydicom.DataElement((0x0002,0x0010), 'UI', '1.2.840.10008.1.2.4.81')
 
 # make jpeg-ls header
 
-header = [0xFF, 0xD8, 0xFF, 0xF7, 0x00, 0x0B, hex(data[32]), hex(data[29]), hex(data[28]), hex(data[25]), hex(data[24]), 0x01, 0x01, 0x11, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, hex(data[36]), 0x00, 0x00]
+header = [0xFF, 0xD8, 0xFF, 0xF7, 0x00, 0x0B, bits, rows, cols, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, data[36], 0x00, 0x00]
 
 # get frame positions from high res sequence
 frames = []
-
-print(fcount)
-print(type(data))
-
 for i in range(-1024,0,4):
-    #print(data[i],data[i+1],data[i+2],data[i+3])
     frame_pos = int.from_bytes(data[i:i+4],"little")
-    print(data[i:i+4])
     frames.append(frame_pos)
 
 
 # get each frame, one by one & add jpeg header (to each frame??)
 # also add end of image marker to each one
-
-
-# first need to correct for the int overflow issue (can't see proper solution)
-#corrected_frames = []
-prev = 0
-#correction = 0
-#for i in range(0,fcount+1):
-#    frame = frames[i]
-#    diff = frames[i]-prev
-#    if diff<0:
-#        diff=diff+((2**23)*2)
-#        correction = correction + 1
-#    corrected_frame = frame+((2**23)*2*correction)
-#    print(corrected_frame, "  -----  ", diff)
-#    prev = frames[i]
     
 # Pixel Data tag is 7FE0,0010
 pixel_data = []
 
+# Insert frame position (offset table) into pixel data element
+for i in frames:
+    pixel_data.append(i)
+
+
+# Insert data for each frame with jpeg-ls header
 # save pixel data via array
-for i in range(0,fcount+1):
-    diff = frames[i] - prev
-    print(frames[i], "  -----  ", diff)
-    prev = frames[i]
+for i in range(0,fcount):
     frame_start = frames[i]
     frame_end = frames[i+1]-1
-    frame_pixels = []
+    # Append header
     for j in header:
-        frame_pixels.append(j)
+        pixel_data.append(j)
+    # Append pixel data
     for k in data[frame_start:frame_end]:
-        frame_pixels.append(k)
-    #frame_pixels.append(0xFF,0xD9)
+        pixel_data.append(k)
+    # If frame length is odd - append 00 byte.
     if (frame_end-frame_start)%2>0:
-        pass
-    pixel_data.append(frame_pixels)
+        pixel_data.append(0x00)
+        pixel_data.append(0x00)
+    # Append EOI marker
+    pixel_data.append(0xFF)
+    pixel_data.append(0xD9)
 
-#print(pixel_data)
 
-# save into new dicom file (with offset table??)
+# convert pixel_data to numpy.ndarray
+pix_arr = numpy.array(pixel_data)
+# save into new dicom file
+ds2.PixelData = pix_arr.tobytes()
 
 
-# meta header (1.2.840.10008.1.2.4.81)
+# set littleEndian & VR options
+ds2.is_little_endian = False
+ds2.is_implicit_VR = False
 
+
+# write output to file
+ds2.save_as(outfile)
 
 
 # profit
