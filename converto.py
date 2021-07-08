@@ -42,45 +42,55 @@ pass
 print('making new dataset')
 ds2 = pydicom.Dataset()
 
+
 # copy across existing attributes (but not private elements)
 print('getting non-private elements')
+pass
 
-
-# set frame count, columns etc in new dicom file (take from igh res sequence)
+# set frame count, columns etc in new dicom file (take from high res sequence)
 print('getting private info')
 with open(pvt_dump, "rb") as fh:
     data = fh.read()
 
-#print('frame count')
 fcount = int.from_bytes(data[20:22],"little")
 ds2[0x0028,0x0008] = pydicom.DataElement((0x0028,0x0008), 'US', fcount)
+print('Frame count: ', fcount)
 
-#print('columns')
 cols = int.from_bytes(data[24:26],"little")
 ds2[0x0028,0x0011] = pydicom.DataElement((0x0028,0x0011), 'US', cols)
+print('No. columns: ', cols)
 
-
-#print('rows')
 rows = int.from_bytes(data[28:30],"little")
 ds2[0x0028,0x0010] = pydicom.DataElement((0x0028,0x0010), 'US', rows)
+print('No. rows: ', rows)
 
-
-#print('bits stored')
 bits = int.from_bytes(data[32:33],"little")
 ds2[0x0028,0x0101] = pydicom.DataElement((0x0028,0x0101), 'US', bits)
 ds2[0x0028,0x0102] = pydicom.DataElement((0x0028,0x0102), 'US', bits-1)
-
+print('Bits stored: ', bits)
 
 #misc values
-ds2[0x0028,0x0100] = pydicom.DataElement((0x0028,0x0100), 'US', '16')
+ds2[0x0028,0x0100] = pydicom.DataElement((0x0028,0x0100), 'US', 16)
 ds2[0x0028,0x0004] = pydicom.DataElement((0x0028,0x0004), 'CS', 'MONOCHROME2')
-ds2[0x0002,0x0010] = pydicom.DataElement((0x0002,0x0010), 'UI', '1.2.840.10008.1.2.4.81')
+
+
+# add transfer syntax meta-header (maybe same as endian stuff below)
+print('Adding transfer syntax meta-header')
+ds2.file_meta = pydicom.Dataset()
+ds2.file_meta.TransferSyntaxUID = '1.2.840.10008.1.2.4.81'
+# set littleEndian & VR options
+print('Setting little-endian & implicit VR options to false')
+ds2.is_little_endian = True
+ds2.is_implicit_VR = False
+
 
 # make jpeg-ls header
-
+print('Making JPEG-LS header')
 header = [0xFF, 0xD8, 0xFF, 0xF7, 0x00, 0x0B, bits, rows, cols, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, data[36], 0x00, 0x00]
 
+
 # get frame positions from high res sequence
+print('Getting frame positions (offset table)')
 frames = []
 for i in range(-1024,0,4):
     frame_pos = int.from_bytes(data[i:i+4],"little")
@@ -94,12 +104,16 @@ for i in range(-1024,0,4):
 pixel_data = []
 
 # Insert frame position (offset table) into pixel data element
-for i in frames:
-    pixel_data.append(i)
+print('Inserting offset table as first fragment')
+ds2[0xFFEE,0xE000] = pydicom.DataElement((0xFFEE,0xE000), 'IS', frames)
 
+print('printing offsets')
+#print(pydicom.encaps.get_frame_offsets(ds2))
 
+'''
 # Insert data for each frame with jpeg-ls header
 # save pixel data via array
+print('Inserting pixel data')
 for i in range(0,fcount):
     frame_start = frames[i]
     frame_end = frames[i+1]-1
@@ -116,20 +130,46 @@ for i in range(0,fcount):
     # Append EOI marker
     pixel_data.append(0xFF)
     pixel_data.append(0xD9)
+'''
+
+# Insert data for each frame with jpeg-ls header
+# save pixel data via array
+print('Inserting pixel data')
+for i in range(0,fcount):
+    frame_data = []
+    frame_start = frames[i]
+    frame_end = frames[i+1]-1
+    # Append header
+    for j in header:
+        frame_data.append(j)
+    # Append pixel data
+    for k in data[frame_start:frame_end]:
+        frame_data.append(k)
+    # If frame length is odd - append 00 byte.
+    if (frame_end-frame_start)%2>0:
+        frame_data.append(0x00)
+        frame_data.append(0x00)
+    # Append EOI marker
+    frame_data.append(0xFF)
+    frame_data.append(0xD9)
+    pixel_data.append(frame_data)
+
+
 
 
 # convert pixel_data to numpy.ndarray
-pix_arr = numpy.array(pixel_data)
-# save into new dicom file
-ds2.PixelData = pix_arr.tobytes()
-
-
-# set littleEndian & VR options
-ds2.is_little_endian = False
-ds2.is_implicit_VR = False
+#pix_arr = numpy.array(pixel_data)
+for i in pixel_data:
+    pa = numpy.array(i)
+    j = pydicom.encaps.encapsulate(pa)
+    #pix_arr.append(j)
+print('Converting new pixel array to bytes')
+#ds2.PixelData = pix_arr.tobytes()
+ds2.PixelData = pydicom.encaps.encapsulate(pix_arr)
 
 
 # write output to file
+print('Saving to file: {}'.format(outfile))
 ds2.save_as(outfile)
 
 
