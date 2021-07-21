@@ -7,11 +7,17 @@ if [ $# -eq 0 ]
 fi
 
 infile=$1
+identifier=$2
 
 echo -----------------------------------
 echo ------- Supplied input file -------
 echo -----------------------------------
 echo $infile
+
+echo -----------------------------------
+echo ------- Supplied identifier -------
+echo -----------------------------------
+echo $identifier
 
 # check dicom compliance
 echo -------------------------------------------------------
@@ -38,7 +44,7 @@ for i in x0*; do
     rm $i
 done
 
-cat x*.bin > data.bin
+cat x*.bin > ${identifier}_data.bin
 rm x*.bin
 
 

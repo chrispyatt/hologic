@@ -155,17 +155,21 @@ for i in range(0,fcount):
     pixel_data.append(frame_data)
 
 
-
+print("Transfer Syntax Info")
+print(ds2.file_meta.TransferSyntaxUID.name)
+print(ds2.file_meta.TransferSyntaxUID.is_compressed)
 
 # convert pixel_data to numpy.ndarray
-#pix_arr = numpy.array(pixel_data)
-for i in pixel_data:
-    pa = numpy.array(i)
-    j = pydicom.encaps.encapsulate(pa)
+print('Converting to array')
+pix_arr = numpy.array(pixel_data, dtype=object)
+#for i in pixel_data:
+#    pa = numpy.array(i)
+#    j = pydicom.encaps.encapsulate(pa)
     #pix_arr.append(j)
 print('Converting new pixel array to bytes')
-#ds2.PixelData = pix_arr.tobytes()
-ds2.PixelData = pydicom.encaps.encapsulate(pix_arr)
+pix_bytes = (pix_arr.tobytes())
+print('Encapsulating')
+ds2.PixelData = pydicom.encaps.encapsulate(pix_bytes)
 
 
 # write output to file

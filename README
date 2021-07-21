@@ -1,0 +1,40 @@
+# This set of scripts takes a Hologic tomography object
+# and converts the data object to more standard DICOM
+# such that it can be read by conventional DICOM reader
+# software.
+
+# There are two scripts under the hood, the first of which
+# (converto.sh) uses command line unix tools to retrieve
+# the unrecognised private data elements from the provided
+# Hologic object and saves this data into a binary dump file.
+# The second script (converto.py) uses PyDicom libraries to
+# read the above mentioned binary data and construct a new 
+# data object that conforms to standard DICOM.
+
+# The wrapper script (HologicConvWrapper.sh) is how the user
+# should interact with the system. Simply provide an image
+# file and the output should be a fully compliant DICOM.
+
+# The final important component is the Hologic private
+# data dictionary (hologic_private.dic) that tells the tools
+# how to interpret the private data tags in the input images.
+
+# Dependencies
+# Command line
+# `---bash
+# `---dcmtk
+# `---dciodvfy
+# Python
+# `---python3
+# `---pydicom
+# `---os
+# `---argparse
+# `---numpy
+
+# USAGE
+#
+# bash HologicConvWrapper.sh $IMAGEFILE $NAME
+#
+# where $IMAGEFILE is the filename of the image to convert
+# and $NAME is an identifier/ sample name that will be used
+# when saving the output to a new file.
