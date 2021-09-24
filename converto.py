@@ -86,8 +86,8 @@ ds2.is_implicit_VR = False
 
 # make jpeg-ls header
 print('Making JPEG-LS header')
-header = [0xFF, 0xD8, 0xFF, 0xF7, 0x00, 0x0B, bits, rows, cols, 0x01, 0x01, 0x11, 0x00, 0xFF, 0xDA, 0x00, 0x08, 0x01, 0x01, 0x00, data[36], 0x00, 0x00]
-
+hdr = "FF D8 FF F7 00 0B {} {} {} 01 01 11 00 FF DA 00 08 01 01 00 {} 00 00".format(format(bits,'x').zfill(2), format(rows,'x').zfill(2), format(cols,'x').zfill(2), format(data[36],'x').zfill(2))
+header = bytearray(hdr)
 
 # get frame positions from high res sequence
 print('Getting frame positions (offset table)')
@@ -141,9 +141,11 @@ for i in range(0,fcount):
     frame_end = frames[i+1]-1
     # Append header
     for j in header:
+        #print(type(j))
         frame_data.append(j)
     # Append pixel data
     for k in data[frame_start:frame_end]:
+        #print(type(k))
         frame_data.append(k)
     # If frame length is odd - append 00 byte.
     if (frame_end-frame_start)%2>0:
@@ -167,8 +169,10 @@ pix_arr = numpy.array(pixel_data, dtype=object)
 #    j = pydicom.encaps.encapsulate(pa)
     #pix_arr.append(j)
 print('Converting new pixel array to bytes')
-pix_bytes = (pix_arr.tobytes())
+pix_bytes = bytes(pix_arr)
+#pix_bytes = (pix_arr.tobytes())
 print('Encapsulating')
+#print(type(pix_bytes))
 ds2.PixelData = pydicom.encaps.encapsulate(pix_bytes)
 
 
