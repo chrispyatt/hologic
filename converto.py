@@ -22,9 +22,10 @@ outfile = args.outfile
 #outputDirectory = args.outputDirectory
 
 
-print('reading input file')
+print('Reading input file')
 ds = pydicom.read_file(infile)
 
+'''
 new_dict_entries = {
     0x7E011001 : ('LO', 'CodecVersion', '1', 'HologicTomoSc'),
     0x7E011002 : ('SH', 'CodecContentType', '1', 'HologicTomoSc'),
@@ -32,23 +33,23 @@ new_dict_entries = {
     0x7E011011 : ('SQ', 'LowResolutionDataSequence', '1', 'HologicTomoSc'),
     0x7E011012 : ('OB', 'CodecContent', '1', 'HologicTomoSc'),
 }
-
+'''
 
 # check values (sanity check)
 # print rows/columns from x00 and from dcm dump of file
 pass
 
 # make new dicom file
-print('making new dataset')
+print('Making new dataset')
 ds2 = pydicom.Dataset()
 
 
 # copy across existing attributes (but not private elements)
-print('getting non-private elements')
+print('Getting non-private elements')
 pass
 
 # set frame count, columns etc in new dicom file (take from high res sequence)
-print('getting private info')
+print('Getting private info')
 with open(pvt_dump, "rb") as fh:
     data = fh.read()
 
@@ -86,8 +87,7 @@ ds2.is_implicit_VR = False
 
 # make jpeg-ls header
 print('Making JPEG-LS header')
-hdr = "FF D8 FF F7 00 0B {} {} {} 01 01 11 00 FF DA 00 08 01 01 00 {} 00 00".format(format(bits,'x').zfill(2), format(rows,'x').zfill(2), format(cols,'x').zfill(2), format(data[36],'x').zfill(2))
-header = bytearray(hdr)
+header = "FF D8 FF F7 00 0B {} {} {} 01 01 11 00 FF DA 00 08 01 01 00 {} 00 00".format(format(bits,'x').zfill(4), format(rows,'x').zfill(4), format(cols,'x').zfill(4), format(data[36],'x').zfill(2))
 
 # get frame positions from high res sequence
 print('Getting frame positions (offset table)')
@@ -96,9 +96,6 @@ for i in range(-1024,0,4):
     frame_pos = int.from_bytes(data[i:i+4],"little")
     frames.append(frame_pos)
 
-
-# get each frame, one by one & add jpeg header (to each frame??)
-# also add end of image marker to each one
     
 # Pixel Data tag is 7FE0,0010
 pixel_data = []
@@ -107,74 +104,43 @@ pixel_data = []
 print('Inserting offset table as first fragment')
 ds2[0xFFEE,0xE000] = pydicom.DataElement((0xFFEE,0xE000), 'IS', frames)
 
-print('printing offsets')
-#print(pydicom.encaps.get_frame_offsets(ds2))
-
-'''
 # Insert data for each frame with jpeg-ls header
 # save pixel data via array
 print('Inserting pixel data')
 for i in range(0,fcount):
+    frame_data = ""
     frame_start = frames[i]
     frame_end = frames[i+1]-1
     # Append header
-    for j in header:
-        pixel_data.append(j)
+    frame_data = frame_data + header
     # Append pixel data
     for k in data[frame_start:frame_end]:
-        pixel_data.append(k)
+        l = format(k,'x').zfill(2)
+        frame_data = frame_data + l
     # If frame length is odd - append 00 byte.
     if (frame_end-frame_start)%2>0:
-        pixel_data.append(0x00)
-        pixel_data.append(0x00)
+        frame_data = frame_data + '00'
     # Append EOI marker
-    pixel_data.append(0xFF)
-    pixel_data.append(0xD9)
-'''
-
-# Insert data for each frame with jpeg-ls header
-# save pixel data via array
-print('Inserting pixel data')
-for i in range(0,fcount):
-    frame_data = []
-    frame_start = frames[i]
-    frame_end = frames[i+1]-1
-    # Append header
-    for j in header:
-        #print(type(j))
-        frame_data.append(j)
-    # Append pixel data
-    for k in data[frame_start:frame_end]:
-        #print(type(k))
-        frame_data.append(k)
-    # If frame length is odd - append 00 byte.
-    if (frame_end-frame_start)%2>0:
-        frame_data.append(0x00)
-        frame_data.append(0x00)
-    # Append EOI marker
-    frame_data.append(0xFF)
-    frame_data.append(0xD9)
-    pixel_data.append(frame_data)
+    frame_data = frame_data + 'FFD9'
+    #pixel_data = pixel_data + frame_data
+    frame_bytes = bytearray.fromhex(frame_data)
+    pixel_data.append(frame_bytes)
 
 
 print("Transfer Syntax Info")
 print(ds2.file_meta.TransferSyntaxUID.name)
 print(ds2.file_meta.TransferSyntaxUID.is_compressed)
 
-# convert pixel_data to numpy.ndarray
-print('Converting to array')
-pix_arr = numpy.array(pixel_data, dtype=object)
-#for i in pixel_data:
-#    pa = numpy.array(i)
-#    j = pydicom.encaps.encapsulate(pa)
-    #pix_arr.append(j)
-print('Converting new pixel array to bytes')
-pix_bytes = bytes(pix_arr)
-#pix_bytes = (pix_arr.tobytes())
-print('Encapsulating')
-#print(type(pix_bytes))
-ds2.PixelData = pydicom.encaps.encapsulate(pix_bytes)
 
+print('Converting to array')
+#pix_arr = bytearray.fromhex(pixel_data)
+#print(type(pix_arr))
+print('Converting new pixel array to bytes')
+#pix_bytes = bytes(pix_arr)
+print('Encapsulating')
+ds2.PixelData = pydicom.encaps.encapsulate(pixel_data)
+#ds2.PixelData = pix_arr
+#ds2.PixelData = pix_bytes
 
 # write output to file
 print('Saving to file: {}'.format(outfile))
