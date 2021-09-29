@@ -90,19 +90,19 @@ print('Making JPEG-LS header')
 header = "FF D8 FF F7 00 0B {} {} {} 01 01 11 00 FF DA 00 08 01 01 00 {} 00 00".format(format(bits,'x').zfill(4), format(rows,'x').zfill(4), format(cols,'x').zfill(4), format(data[36],'x').zfill(2))
 
 # get frame positions from high res sequence
-print('Getting frame positions (offset table)')
+print('Getting frame positions')
 frames = []
 for i in range(-1024,0,4):
     frame_pos = int.from_bytes(data[i:i+4],"little")
     frames.append(frame_pos)
 
     
-# Pixel Data tag is 7FE0,0010
+# Pixel Data tag is 7FE0,0010. Add offset table as first fragment.
 pixel_data = []
 
 # Insert frame position (offset table) into pixel data element
-print('Inserting offset table as first fragment')
-ds2[0xFFEE,0xE000] = pydicom.DataElement((0xFFEE,0xE000), 'IS', frames)
+#print('Inserting offset table as first fragment')
+#ds2[0xFFEE,0xE000] = pydicom.DataElement((0xFFEE,0xE000), 'IS', byteframes)
 
 # Insert data for each frame with jpeg-ls header
 # save pixel data via array
@@ -119,13 +119,24 @@ for i in range(0,fcount):
         frame_data = frame_data + l
     # If frame length is odd - append 00 byte.
     if (frame_end-frame_start)%2>0:
-        frame_data = frame_data + '00'
+        frame_data = frame_data + ' 00'
     # Append EOI marker
-    frame_data = frame_data + 'FFD9'
+    frame_data = frame_data + ' FFD9'
     #pixel_data = pixel_data + frame_data
     frame_bytes = bytearray.fromhex(frame_data)
     pixel_data.append(frame_bytes)
 
+# create basic offset table & prepend as first fragment
+print('Making basic offset table (BOT)')
+offsets = '00000000'
+prev = 0
+for i in range(0,fcount):
+    offset = prev + len(pixel_data[i])
+    prev = offset
+    offsets = offsets + ' ' + format(offset,'x').zfill(8)
+byte_offsets = bytearray.fromhex(offsets)
+print('Inserting BOT as first fragment')
+pixel_data.insert(0,byte_offsets)
 
 print("Transfer Syntax Info")
 print(ds2.file_meta.TransferSyntaxUID.name)
