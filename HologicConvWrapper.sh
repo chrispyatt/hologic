@@ -24,7 +24,7 @@ echo ----- Constructing new image ------
 echo -----------------------------------
 
 # run python image reconstruction
-python3 converto.py $hol_image ${identifier}_data.bin ${identifier}.dcm
+python3 converto.py $hol_image ${identifier}_data.bin ${identifier}_tagdump ${identifier}.dcm
 
 
 

@@ -47,6 +47,7 @@ done
 cat x*.bin > ${identifier}_data.bin
 rm x*.bin
 
+dcmdump $infile > ${identifier}_tagdump
 
 echo ---------------------------------------------
 echo ------- Getting sanity check figures --------
