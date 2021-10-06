@@ -178,7 +178,8 @@ print(ds2)
 
 # write output to file
 print('Saving to file: {}'.format(outfile))
-ds2.save_as(outfile)
+#ds2.save_as(outfile)
+pydicom.filewriter.dcmwrite(outfile, ds2, write_like_original=False)
 
 
 # profit
