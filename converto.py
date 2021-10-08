@@ -60,14 +60,15 @@ with open(tagdump,'r') as tags:
         else:
             continue
         if tag_group == '0002':
+            continue
             if VR == 'UL':
                 cont = int(content)
                 content = bytearray.fromhex(format(cont,'x').zfill(8))
             ds2.file_meta[tag_group,tag_element] = pydicom.DataElement((tag_group,tag_element), VR, content)
         elif VR not in avoid_tags:
             if VR == 'US':
-                cont = int(content)
-                content = bytearray.fromhex(format(cont,'x').zfill(4))
+                content = int(content)
+                #content = bytearray.fromhex(format(cont,'x').zfill(4))
             ds2[tag_group,tag_element] = pydicom.DataElement((tag_group,tag_element), VR, content)
 
 # set frame count, columns etc in new dicom file (take from high res sequence)
@@ -81,29 +82,31 @@ print('Frame count: ', fcount)
 
 cols = int.from_bytes(data[24:26],"little")
 byte_col = bytearray.fromhex(format(cols,'x').zfill(4))
-ds2[0x0028,0x0011] = pydicom.DataElement((0x0028,0x0011), 'US', byte_col)
+ds2[0x0028,0x0011] = pydicom.DataElement((0x0028,0x0011), 'US', cols)
 print('No. columns: ', cols)
+print(byte_col)
 
 rows = int.from_bytes(data[28:30],"little")
 byte_row = bytearray.fromhex(format(rows,'x').zfill(4))
-ds2[0x0028,0x0010] = pydicom.DataElement((0x0028,0x0010), 'US', byte_row)
+ds2[0x0028,0x0010] = pydicom.DataElement((0x0028,0x0010), 'US', rows)
 print('No. rows: ', rows)
+print(byte_row)
 
 bits = int.from_bytes(data[32:33],"little")
 byte_bits = bytearray.fromhex(format(bits,'x').zfill(4))
 byte_hibit = bytearray.fromhex(format(bits-1,'x').zfill(4))
-ds2[0x0028,0x0101] = pydicom.DataElement((0x0028,0x0101), 'US', byte_bits)
-ds2[0x0028,0x0102] = pydicom.DataElement((0x0028,0x0102), 'US', byte_hibit)
+ds2[0x0028,0x0101] = pydicom.DataElement((0x0028,0x0101), 'US', bits)
+ds2[0x0028,0x0102] = pydicom.DataElement((0x0028,0x0102), 'US', bits-1)
 print('Bits stored: ', bits)
 
 #misc values
-ds2[0x0028,0x0100] = pydicom.DataElement((0x0028,0x0100), 'US', bytearray.fromhex(format(16,'x').zfill(4)))
+ds2[0x0028,0x0100] = pydicom.DataElement((0x0028,0x0100), 'US', 16)
 ds2[0x0028,0x0004] = pydicom.DataElement((0x0028,0x0004), 'CS', 'MONOCHROME2')
 
 # add transfer syntax meta-header (maybe same as endian stuff below)
 print('Adding transfer syntax meta-header')
 ds2.file_meta.TransferSyntaxUID = '1.2.840.10008.1.2.4.81'
-ds2.file_meta[0x0002,0x0001] = pydicom.DataElement((0x0002,0x0001), 'OB', b'00\01')
+#ds2.file_meta[0x0002,0x0001] = pydicom.DataElement((0x0002,0x0001), 'OB', b'00\01')
 # set littleEndian & VR options
 print('Setting little-endian & implicit VR options to false')
 ds2.is_little_endian = True
@@ -180,6 +183,7 @@ print(ds2)
 print('Saving to file: {}'.format(outfile))
 #ds2.save_as(outfile)
 pydicom.filewriter.dcmwrite(outfile, ds2, write_like_original=False)
+#ds2.save()
 
 
 # profit
