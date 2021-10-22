@@ -34,7 +34,7 @@ export DCMDICTPATH=./hologic_private.dic:$DCMDICTPATH
 echo ---------------------------------------------
 echo ------- Getting private data elements -------
 echo ---------------------------------------------
-dcmdump +L +P "7e01,1012" --prepend +uc $infile \
+dcmdump +L +P "7e01,1010" --prepend +uc $infile \ # there is a bug here - the .bin files are not being generated
 | grep "(7e01,1010).(7e01,1012)" \
 | sed 's/^.*OB //;s/ #.*$//' \
 | split -d -l1
